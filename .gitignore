@@ -1,0 +1,58 @@
+# OS files
+.DS_Store
+desktop.ini
+Thumbs.db
+
+# Editors
+*.swp
+*.swo
+Session.vim
+.idea/
+*.iml
+.vscode/
+.vim/
+.helix/
+.zed/
+.vs/
+.dir-locals.el
+
+# Go build and test output
+/bin/
+/stupidict
+/stupidict.exe
+*.test
+*.test.exe
+/coverage/
+/coverage.out
+/coverage.html
+*.prof
+
+# Local Go workspace
+/go.work
+/go.work.sum
+
+# Local profile and downloaded assets (when stored in the repository root)
+/config.json
+/dictionary.db
+/dictionary.db-*
+/audio-pack.db
+/audio-pack.db-*
+/history.db
+/history.db-*
+/.config-*.tmp
+
+# Editor backup files
+*~
+\#*
+\#*\#
+.#*
+
+# Tags
+tags
+tags.*
+TAGS
+TAGS.*
+
+# direnv
+/.envrc
+/.direnv/
