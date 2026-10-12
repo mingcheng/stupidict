@@ -303,6 +303,7 @@ func (ui *UI) dataRows(info *client.DataInfo) [][2]string {
 		count = ui.tr("Unavailable: ", "无法读取：") + info.CountError.Error()
 	}
 	rows = append(rows, [2]string{ui.tr("Entries", "词条数量"), count})
+	modified := false
 	for _, asset := range []struct {
 		name string
 		info client.FileInfo
@@ -323,7 +324,11 @@ func (ui *UI) dataRows(info *client.DataInfo) [][2]string {
 				[2]string{asset.name + ui.tr(" size", "大小"), fmt.Sprintf("%.1f MiB (%d %s)", float64(asset.info.Size)/(1024*1024), asset.info.Size, ui.tr("bytes", "字节"))},
 				[2]string{asset.name + ui.tr(" modified", "修改时间"), asset.info.Modified.Local().Format(time.RFC3339)},
 			)
+			modified = true
 		}
+	}
+	if modified {
+		rows = append(rows, [2]string{"", ui.tr("Modified times are local file times, not data publication dates.", "修改时间为本地文件时间，并非数据发布日期。")})
 	}
 	return rows
 }
