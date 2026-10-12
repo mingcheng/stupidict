@@ -1,0 +1,108 @@
+# GoReleaser configuration for stupidict.
+#
+# Native audio playback (malgo/miniaudio) requires CGO, so every target needs a
+# C toolchain. Releases run on a macOS host: Apple Clang builds the Darwin
+# targets natively, and Zig cross-compiles the C code for Linux and Windows.
+# See .github/workflows/release.yml.
+version: 2
+
+project_name: stupidict
+
+before:
+  hooks:
+    - go mod download
+
+builds:
+  - id: darwin
+    main: ./cmd/stupidict
+    binary: stupidict
+    goos: [darwin]
+    goarch: [amd64, arm64]
+    env:
+      - CGO_ENABLED=1
+    flags: [-trimpath]
+    ldflags: &ldflags
+      - -s -w -X 'main.version=v{{ .Version }}' -X 'main.commit={{ .ShortCommit }}' -X 'main.buildDate={{ .Date }}'
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+  - id: linux
+    main: ./cmd/stupidict
+    binary: stupidict
+    goos: [linux]
+    goarch: [amd64, arm64]
+    env:
+      - CGO_ENABLED=1
+    flags: [-trimpath]
+    ldflags: *ldflags
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    # Target an old glibc so binaries run on most distributions. Audio
+    # libraries (ALSA/PulseAudio) are loaded at runtime by miniaudio.
+    overrides:
+      - goos: linux
+        goarch: amd64
+        env:
+          - CC=zig cc -target x86_64-linux-gnu.2.17
+          - CXX=zig c++ -target x86_64-linux-gnu.2.17
+      - goos: linux
+        goarch: arm64
+        env:
+          - CC=zig cc -target aarch64-linux-gnu.2.17
+          - CXX=zig c++ -target aarch64-linux-gnu.2.17
+
+  - id: windows
+    main: ./cmd/stupidict
+    binary: stupidict
+    goos: [windows]
+    goarch: [amd64, arm64]
+    env:
+      - CGO_ENABLED=1
+    flags: [-trimpath]
+    ldflags: *ldflags
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    overrides:
+      - goos: windows
+        goarch: amd64
+        env:
+          - CC=zig cc -target x86_64-windows-gnu
+          - CXX=zig c++ -target x86_64-windows-gnu
+      - goos: windows
+        goarch: arm64
+        env:
+          - CC=zig cc -target aarch64-windows-gnu
+          - CXX=zig c++ -target aarch64-windows-gnu
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot-{{ .ShortCommit }}"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "Merge pull request"
+      - "Merge branch"
+
+release:
+  github:
+    owner: mingcheng
+    name: stupidict
+  prerelease: auto
+  footer: |
+    Dictionary and audio data are downloaded on first run from the upstream
+    [data-3 release](https://github.com/cholf5/stupid-dict/releases/tag/data-3).

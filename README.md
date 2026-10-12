@@ -21,6 +21,20 @@ using the same dictionary and audio data.
 
 ## Installation
 
+### Prebuilt binaries
+
+Download an archive for your platform from the
+[GitHub Releases](https://github.com/mingcheng/stupidict/releases) page and verify
+it against `checksums.txt`. Builds are provided for:
+
+| OS      | Architectures    | Notes               |
+| ------- | ---------------- | ------------------- |
+| Linux   | `amd64`, `arm64` | glibc 2.17 or newer |
+| macOS   | `amd64`, `arm64` |                     |
+| Windows | `amd64`, `arm64` | `.zip` archive      |
+
+All release binaries include native audio playback.
+
 ### Build from source
 
 Requires **Go SDK development under 1.27.2 or newer**, Git, GNU Make, and a C compiler such as GCC or
@@ -65,6 +79,28 @@ To prepare it without opening the interface:
 
 Press `F1` for keyboard help, `F3` for settings, `u` / `p` for UK/US pronunciation,
 and `q` to quit.
+
+## Releasing
+
+Releases are built by [GoReleaser](https://goreleaser.com) in the
+[release workflow](.github/workflows/release.yml) using
+[.goreleaser.yaml](.goreleaser.yaml). Pushing a `v*` tag runs the tests, builds every
+platform, and publishes a GitHub release with archives and checksums:
+
+```sh
+git tag -a v1.0.0 -m "v1.0.0"
+git push origin v1.0.0
+```
+
+Because native audio requires CGO, the workflow runs on macOS: Apple Clang builds the
+macOS targets and [Zig](https://ziglang.org) cross-compiles the C code for Linux and
+Windows. Manual runs and pull requests that change the release configuration produce
+a snapshot build as a workflow artifact instead of a release. To try it locally with
+GoReleaser v2 and Zig installed on macOS:
+
+```sh
+goreleaser release --snapshot --clean
+```
 
 This project is licensed under the MIT License. Data licensing is separate from the application code. See the
 [upstream license notes](https://github.com/cholf5/stupid-dict#license) before

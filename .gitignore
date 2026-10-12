@@ -20,6 +20,7 @@ Session.vim
 /bin/
 /stupidict
 /stupidict.exe
+/dist/
 *.test
 *.test.exe
 /coverage/
