@@ -57,3 +57,6 @@ TAGS.*
 # direnv
 /.envrc
 /.direnv/
+
+# Local secrets
+/.env
