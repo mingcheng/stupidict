@@ -10,11 +10,12 @@ import (
 )
 
 type Config struct {
-	Dictionary string `json:"dictionary"`
-	Audio      string `json:"audio"`
-	Theme      string `json:"theme"`
-	Language   string `json:"language"`
-	Glyphs     string `json:"glyphs"`
+	Dictionary       string `json:"dictionary"`
+	Audio            string `json:"audio"`
+	Theme            string `json:"theme"`
+	Language         string `json:"language"`
+	Glyphs           string `json:"glyphs"`
+	MonitorClipboard bool   `json:"monitor_clipboard"`
 }
 
 func DefaultPath() (string, error) {

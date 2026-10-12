@@ -136,5 +136,9 @@ func (ui *UI) renderDownload() {
 			ui.app.SetFocus(ui.search)
 		}
 	}
-	ui.footer.AddItem(ui.status, 1, 0, false)
+	if ui.config.MonitorClipboard {
+		ui.footer.AddItem(ui.statusLine, 1, 0, false)
+	} else {
+		ui.footer.AddItem(ui.status, 1, 0, false)
+	}
 }

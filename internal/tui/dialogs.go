@@ -196,6 +196,7 @@ func (ui *UI) help() {
 		{"", ui.tr("In Help / About: arrows, PgUp / PgDn or mouse wheel scroll; Home / End jump to top / bottom. Tab selects Close; Esc closes directly.", "在帮助 / 关于中：方向键、PgUp / PgDn 或滚轮滚动，Home / End 跳至首尾；Tab 选中关闭按钮，Esc 直接关闭。")},
 		{"", ui.tr("Enter in search always queries your text, not a completion. Editing history does not change the dictionary.", "搜索框中按 Enter 始终查询输入原文，不会自动选择补全词。编辑历史不会修改词典。")},
 		{"", ui.tr("Mouse clicks select controls and words. Your terminal may require Shift to select / copy text.", "可用鼠标点击控件与词条；终端选择 / 复制文本可能需要按住 Shift。")},
+		{"", ui.tr("Clipboard monitoring is opt-in in Settings. Press Esc to leave search; it pauses during input, dialogs, playback and recent activity. It never plays audio or saves clipboard queries to history.", "剪贴板监控需在设置中开启。按 Esc 离开搜索框；输入、弹窗、播放及刚操作界面时暂停。不会自动发音，也不会将剪贴板查询写入历史。")},
 		{"", ui.tr("Missing data downloads on startup. To reinstall pinned data-3 assets, restart with -update-data; add -download to exit when done. Use -config <path> for a separate profile.", "启动时自动下载缺失数据。重新运行时加 -update-data 可重装固定的 data-3 数据，加 -download 可在完成后退出；-config <路径> 可使用独立配置。")},
 	})
 }
@@ -358,6 +359,7 @@ func (ui *UI) settings() {
 	form.AddInputField(ui.tr("Audio DB", "语音 DB"), config.Audio, 0, nil, func(value string) { config.Audio = value })
 	glyphs := []string{"plain", "nerd", "emoji"}
 	form.AddDropDown(ui.tr("Icons", "图标"), []string{ui.tr("Plain", "普通"), "Nerd Font", "Emoji"}, index(glyphs, config.Glyphs), func(_ string, selected int) { config.Glyphs = glyphs[selected] })
+	form.AddCheckbox(ui.tr("Monitor clipboard (quiet)", "监控剪贴板（静默）"), config.MonitorClipboard, func(enabled bool) { config.MonitorClipboard = enabled })
 	form.AddButton(ui.tr("Save", "保存"), func() {
 		ui.configuring = true
 		ui.invalidate()
@@ -392,10 +394,11 @@ func (ui *UI) settings() {
 				ui.updateNavigation()
 				ui.refreshHistory()
 				ui.status.SetText(ui.tr("Settings saved", "设置已保存"))
+				ui.startClipboard()
 			}
 		})
 	}).AddButton(ui.tr("Cancel", "取消"), ui.closeDialog)
-	ui.openDialog(form, 72, 14)
+	ui.openDialog(form, 72, 15)
 }
 
 func (ui *UI) selectedRecord() (profile.Record, bool) {

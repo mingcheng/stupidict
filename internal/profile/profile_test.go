@@ -10,18 +10,19 @@ import (
 func TestConfigRoundTrip(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings", "config.json")
 	config, err := Load(path)
-	if err != nil || config.Theme != "system" {
+	if err != nil || config.Theme != "system" || config.MonitorClipboard {
 		t.Fatalf("defaults: %+v %v", config, err)
 	}
 	if config.Dictionary != filepath.Join(filepath.Dir(path), "dictionary.db") || config.Audio != filepath.Join(filepath.Dir(path), "audio-pack.db") {
 		t.Fatalf("default assets must live with the profile: %+v", config)
 	}
 	config.Dictionary, config.Audio, config.Glyphs = "dict.db", "", "emoji"
+	config.MonitorClipboard = true
 	if err := Save(path, config); err != nil {
 		t.Fatal(err)
 	}
 	loaded, err := Load(path)
-	if err != nil || loaded.Dictionary != filepath.Join(filepath.Dir(path), "dict.db") || loaded.Audio != "" || loaded.Glyphs != "emoji" {
+	if err != nil || loaded.Dictionary != filepath.Join(filepath.Dir(path), "dict.db") || loaded.Audio != "" || loaded.Glyphs != "emoji" || !loaded.MonitorClipboard {
 		t.Fatalf("round trip: %+v %v", loaded, err)
 	}
 	config.Theme = "light"
@@ -37,13 +38,25 @@ func TestConfigRoundTrip(t *testing.T) {
 	if string(before) != string(after) {
 		t.Fatal("failed save changed configuration")
 	}
-	for _, invalid := range []string{"{", "null", `{"theme":"invalid"}`, `{"language":"xx"}`, `{"glyphs":"xx"}`, `{"dictionary":[]}`, `{"dictionary":"history.db"}`, `{"audio":"config.json"}`, `{"audio":"dictionary.db"}`} {
+	for _, invalid := range []string{"{", "null", `{"theme":"invalid"}`, `{"language":"xx"}`, `{"glyphs":"xx"}`, `{"monitor_clipboard":"yes"}`, `{"dictionary":[]}`, `{"dictionary":"history.db"}`, `{"audio":"config.json"}`, `{"audio":"dictionary.db"}`} {
 		if err := os.WriteFile(path, []byte(invalid), 0600); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := Load(path); err == nil {
 			t.Fatalf("accepted %s", invalid)
 		}
+	}
+
+}
+
+func TestOlderConfigLeavesClipboardDisabled(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(path, []byte(`{"theme":"dark"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	config, err := Load(path)
+	if err != nil || config.MonitorClipboard {
+		t.Fatalf("older configuration enabled clipboard access: %+v %v", config, err)
 	}
 }
 

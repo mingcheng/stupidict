@@ -13,6 +13,7 @@ using the same dictionary and audio data.
 - UK/US phonetics, synonyms, antonyms, and related words.
 - Offline UK/US pronunciation from a local audio pack, with no external player.
 - Keyboard and mouse controls, query history, and back/forward navigation.
+- Opt-in, quiet clipboard lookup for newly copied English words.
 - English and Chinese interfaces, light/dark themes, and optional Nerd Font or
 	emoji icons.
 - Automatic downloads of missing data with resumable transfers; offline use

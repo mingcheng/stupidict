@@ -14,6 +14,7 @@ import (
 	dictionary "github.com/mingcheng/stupidict"
 	"github.com/mingcheng/stupidict/internal/assets"
 	"github.com/mingcheng/stupidict/internal/client"
+	"github.com/mingcheng/stupidict/internal/clipboard"
 	"github.com/mingcheng/stupidict/internal/profile"
 	"github.com/rivo/tview"
 )
@@ -63,6 +64,9 @@ type UI struct {
 	headword                                                           *tview.TextView
 	links                                                              *tview.List
 	status                                                             *tview.TextView
+	statusLine                                                         *tview.Flex
+	clipboardStatus                                                    *tview.TextView
+	clipboard                                                          clipboardMonitor
 	back, forward                                                      *tview.Button
 	quit                                                               *tview.Button
 	british, american                                                  *tview.Button
@@ -102,9 +106,16 @@ type UI struct {
 func New(backend Backend, speaker Speaker, configPath, version string) *UI {
 	ui := &UI{app: tview.NewApplication(), backend: backend, speaker: speaker,
 		config: backend.Config(), configPath: configPath, version: version, openURL: openBrowserURL,
-		updates: make(chan func(), 64), historyWake: make(chan struct{}, 1), ready: make(chan struct{})}
+		clipboard: clipboardMonitor{open: clipboard.Open},
+		updates:   make(chan func(), 64), historyWake: make(chan struct{}, 1), ready: make(chan struct{})}
 	ui.build()
 	ui.app.EnableMouse(true).EnablePaste(true).SetInputCapture(ui.key)
+	ui.app.SetMouseCapture(func(event *tcell.EventMouse, action tview.MouseAction) (*tcell.EventMouse, tview.MouseAction) {
+		if action != tview.MouseMove {
+			ui.clipboardActivity()
+		}
+		return event, action
+	})
 	return ui
 }
 
@@ -138,9 +149,11 @@ func (ui *UI) Run(ctx context.Context) error {
 	ui.app.SetBeforeDrawFunc(func(screen tcell.Screen) bool {
 		width, height := screen.Size()
 		ui.resize(width, height)
+		ui.renderClipboardStatus()
 		start.Do(func() {
 			go ui.dispatch()
 			ui.refreshHistory()
+			ui.startClipboard()
 			if ui.initializer != nil {
 				ui.initialize(ui.initialForce)
 			}
@@ -194,12 +207,18 @@ func (ui *UI) build() {
 	ui.pages = tview.NewPages()
 	ui.status = ui.textView().SetScrollable(false).SetWrap(false)
 	ui.status.SetText(ui.tr("Ready", "就绪"))
+	ui.statusLine = tview.NewFlex().AddItem(ui.status, 0, 1, false)
+	ui.clipboardStatus = ui.textView().SetScrollable(false).SetWrap(false).SetTextColor(ui.palette.muted)
+	if ui.config.MonitorClipboard {
+		ui.statusLine.AddItem(ui.clipboardStatus, 24, 0, false)
+	}
 	ui.search = tview.NewInputField().SetLabel(" " + ui.iconLabel("\uf002", ui.tr("Search", "搜索")) + "  ").SetFieldWidth(0)
 	ui.search.SetAcceptanceFunc(func(text string, _ rune) bool { return len(text) <= 4096 && !strings.ContainsAny(text, "\r\n\t") })
 	ui.search.SetFieldBackgroundColor(ui.palette.surface).SetFieldTextColor(ui.palette.text).SetLabelColor(ui.palette.accent)
 	ui.box(ui.search.Box, "")
 	ui.search.SetChangedFunc(func(text string) {
 		if !ui.suppress {
+			ui.clipboardActivity()
 			ui.suggest(text)
 		}
 	})
@@ -296,7 +315,7 @@ func (ui *UI) build() {
 	ui.downloadInfo = ui.textView().SetScrollable(false).SetWrap(false)
 	ui.downloadPane = tview.NewFlex().AddItem(ui.downloadInfo, 0, 1, false)
 	ui.downloadButton = add(ui.downloadPane, ui.iconLabel("\uf04d", ui.tr("Cancel", "取消")), downloadWidth, ui.toggleDownload)
-	ui.footer = tview.NewFlex().SetDirection(tview.FlexRow).AddItem(ui.status, 1, 0, false)
+	ui.footer = tview.NewFlex().SetDirection(tview.FlexRow).AddItem(ui.statusLine, 1, 0, false)
 	ui.root.AddItem(title, 0, 0, 1, 1, 0, 0, false).AddItem(toolbar, 1, 0, 1, 1, 0, 0, false).
 		AddItem(ui.search, 2, 0, 1, 1, 0, 0, true).AddItem(ui.body, 3, 0, 1, 1, 0, 0, false).AddItem(ui.footer, 4, 0, 1, 1, 0, 0, false)
 	ui.pages.AddPage("main", ui.root, true, true)
@@ -345,6 +364,7 @@ func (ui *UI) lookup(query string) {
 			if generation != ui.generation {
 				return
 			}
+			ui.queryCancel = nil
 			if err != nil {
 				ui.fail(err)
 				return
@@ -399,10 +419,13 @@ func (ui *UI) suggest(query string) {
 }
 
 func (ui *UI) invalidate() {
+	ui.cancelClipboardQuery()
+	ui.clipboard.pending = ""
 	ui.generation++
 	ui.suggestGeneration++
 	if ui.queryCancel != nil {
 		ui.queryCancel()
+		ui.queryCancel = nil
 	}
 	if ui.suggestCancel != nil {
 		ui.suggestCancel()
@@ -502,6 +525,7 @@ func (ui *UI) play(accent dictionary.Accent) {
 			if generation != ui.speechGeneration {
 				return
 			}
+			ui.speechCancel = nil
 			if errors.Is(err, dictionary.ErrAudioNotFound) {
 				ui.status.SetText(ui.tr("Audio unavailable; install or update the audio pack", "暂无发音，请安装或更新发音包"))
 			} else if err != nil {
@@ -516,6 +540,7 @@ func (ui *UI) play(accent dictionary.Accent) {
 func (ui *UI) fail(err error) { ui.status.SetText(ui.tr("Error: ", "错误：") + clean(err.Error())) }
 
 func (ui *UI) key(event *tcell.EventKey) *tcell.EventKey {
+	ui.clipboardActivity()
 	if event.Key() == tcell.KeyCtrlC {
 		ui.cancel()
 		return nil
