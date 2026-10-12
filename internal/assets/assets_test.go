@@ -49,13 +49,13 @@ func TestResumeAndAtomicInstall(t *testing.T) {
 			fmt.Fprintf(writer, "%x  audio-pack.db", sha256.Sum256(data))
 			return
 		}
-		if req.Header.Get("Range") != "bytes=100-" {
-			t.Errorf("range: %q", req.Header.Get("Range"))
+		if req.Method == http.MethodGet {
+			if req.Header.Get("Range") != "bytes=100-" {
+				t.Errorf("range: %q", req.Header.Get("Range"))
+			}
+			resumed.Store(true)
 		}
-		resumed.Store(true)
-		writer.Header().Set("Content-Range", fmt.Sprintf("bytes 100-%d/%d", len(data)-1, len(data)))
-		writer.WriteHeader(206)
-		writer.Write(data[100:])
+		http.ServeContent(writer, req, "", time.Time{}, bytes.NewReader(data))
 	}))
 	defer server.Close()
 	target := filepath.Join(t.TempDir(), "audio-pack.db")
@@ -65,13 +65,17 @@ func TestResumeAndAtomicInstall(t *testing.T) {
 	}
 	downloader := &Downloader{Sources: []string{server.URL + "/"}}
 	var phases []string
-	err := downloader.Ensure(context.Background(), Audio, target, false, func(progress Progress) { phases = append(phases, progress.Phase) }, func(_ context.Context, stage string) error { return os.Rename(stage, target) })
+	var resumedBytes int64
+	err := downloader.Ensure(context.Background(), Audio, target, false, func(progress Progress) {
+		phases = append(phases, progress.Phase)
+		resumedBytes = max(resumedBytes, progress.Resumed)
+	}, func(_ context.Context, stage string) error { return os.Rename(stage, target) })
 	if err != nil {
 		t.Fatal(err)
 	}
 	actual, err := os.ReadFile(target)
-	if err != nil || !bytes.Equal(actual, data) || !resumed.Load() {
-		t.Fatalf("install/resume: %v", err)
+	if err != nil || !bytes.Equal(actual, data) || !resumed.Load() || resumedBytes != 100 {
+		t.Fatalf("install/resume: resumed %d bytes, %v", resumedBytes, err)
 	}
 	if phases[len(phases)-1] != "ready" {
 		t.Fatal(phases)
@@ -110,34 +114,41 @@ func TestChecksumRetryAndPreserveInstalledData(t *testing.T) {
 	}
 }
 
-func TestRangeMismatchRestartsAndMirrorFallback(t *testing.T) {
-	var requests atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, req *http.Request) {
-		if strings.HasPrefix(req.URL.Path, "/bad/") {
-			writer.WriteHeader(503)
-			return
-		}
-		if requests.Add(1) == 1 {
-			writer.Header().Set("Content-Range", "bytes 0-3/4")
-			writer.WriteHeader(206)
-			writer.Write([]byte("test"))
-			return
-		}
-		if req.Header.Get("Range") != "" {
-			t.Error("restart still has Range")
-		}
-		writer.Write([]byte("test"))
-	}))
-	defer server.Close()
-	path := filepath.Join(t.TempDir(), "download")
-	os.WriteFile(path+".part", []byte("xx"), 0600)
-	downloader := &Downloader{Sources: []string{server.URL + "/bad/", server.URL + "/good/"}}
-	if err := downloader.download(context.Background(), Audio, path, func(Progress) {}); err != nil {
-		t.Fatal(err)
-	}
-	data, _ := os.ReadFile(path)
-	if string(data) != "test" {
-		t.Fatalf("corrupt append: %q", data)
+func TestUnresumablePartialRestartsAndMirrorFallback(t *testing.T) {
+	for _, test := range []struct {
+		name, partial string
+		ranges        bool
+	}{
+		{"server without ranges", "xx", false},
+		{"partial larger than asset", "xxxxxxxx", true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, req *http.Request) {
+				if strings.HasPrefix(req.URL.Path, "/bad/") {
+					writer.WriteHeader(503)
+					return
+				}
+				if req.Header.Get("Range") != "" {
+					t.Error("restart still has Range")
+				}
+				if test.ranges {
+					writer.Header().Set("Accept-Ranges", "bytes")
+				}
+				writer.Header().Set("Content-Length", "4")
+				writer.Write([]byte("test"))
+			}))
+			defer server.Close()
+			path := filepath.Join(t.TempDir(), "download")
+			os.WriteFile(path+".part", []byte(test.partial), 0600)
+			downloader := &Downloader{Sources: []string{server.URL + "/bad/", server.URL + "/good/"}}
+			if err := downloader.download(context.Background(), Audio, path, func(Progress) {}); err != nil {
+				t.Fatal(err)
+			}
+			data, _ := os.ReadFile(path)
+			if string(data) != "test" {
+				t.Fatalf("corrupt append: %q", data)
+			}
+		})
 	}
 }
 
@@ -232,8 +243,8 @@ func TestIdleBodyTimesOut(t *testing.T) {
 		<-req.Context().Done()
 	}))
 	defer server.Close()
-	downloader := &Downloader{IdleTimeout: 20 * time.Millisecond}
-	err := downloader.transfer(context.Background(), route{base: server.URL + "/"}, Audio, filepath.Join(t.TempDir(), "part"), func(Progress) {})
+	downloader := &Downloader{Sources: []string{server.URL + "/"}, IdleTimeout: 20 * time.Millisecond}
+	err := downloader.download(context.Background(), Audio, filepath.Join(t.TempDir(), "download"), func(Progress) {})
 	if err == nil {
 		t.Fatal("stalled response accepted")
 	}

@@ -1,27 +1,67 @@
-name: Release
+name: Build and release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches: [main]
+    tags: ["v*"]
   pull_request:
-    paths:
-      - .goreleaser.yaml
-      - .github/workflows/release.yml
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+env:
+  CGO_ENABLED: "0"
 
 jobs:
-  goreleaser:
-    # Native audio requires CGO. A macOS host builds Darwin targets with Apple
-    # Clang and cross-compiles Linux/Windows targets with Zig.
-    runs-on: macos-latest
+  test:
+    name: Test (${{ matrix.os }})
+    # Build and test natively on every supported OS; the binaries need no CGO.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Race detector
+        if: runner.os == 'Linux'
+        env:
+          CGO_ENABLED: "1"
+        run: go test -race ./...
+
+      - name: Build
+        run: |
+          binary="bin/stupidict$(go env GOEXE)"
+          go build -trimpath -o "$binary" ./cmd/stupidict
+          "$binary" -version
+
+  release:
+    name: Release
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -32,14 +72,6 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-
-      - name: Set up Zig
-        uses: mlugg/setup-zig@v2
-        with:
-          version: 0.15.2
-
-      - name: Test
-        run: make test
 
       - name: Release
         if: startsWith(github.ref, 'refs/tags/v')

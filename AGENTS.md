@@ -28,9 +28,10 @@
 - Build the CLI with `make build` (or `make build BINARY=/tmp/stupidict`).
   See [Build with Make](README.md#build-with-make) for metadata overrides;
   preserve the shared build information used by `-version` and About.
-- Native playback requires CGO and a C compiler; Make enables CGO by default.
-  For concurrency/lifecycle changes, run `make race`. The dictionary library
-  remains usable without CGO; do not add external-command speech fallbacks.
+- Builds are pure Go (`CGO_ENABLED=0`); do not add CGO dependencies. Native
+  playback uses Oto behind the `device` seam in `internal/speech`. For
+  concurrency/lifecycle changes, run `make race` (the race detector itself needs
+  CGO and a C compiler). Do not add external-command speech fallbacks.
 - Do not launch the interactive app just to validate a code change: startup can
   download assets and write the default user profile. For manual runs, pass
   `-config <temporary-directory>/config.json` to isolate data and settings.
@@ -47,6 +48,8 @@
 - Reuse the simulated screen, stub engine/speaker, and `startUI` / `wait`
   helpers in [internal/tui/app_test.go](internal/tui/app_test.go) for UI changes.
   Keep event dispatch and asynchronous assertions on that established path.
-- Playback tests use decoded fixtures and a native Null device, not subprocesses
-  or the real sound device. They cannot prove audible output. Report manual platform/audio
-  verification separately; see [Offline speech](README.md#offline-speech).
+- Playback tests use decoded fixtures and the fake `device` in
+  [internal/speech/output_test.go](internal/speech/output_test.go), not
+  subprocesses or the real sound device (`STUPIDDICT_PLAYBACK=1` opts in).
+  They cannot prove audible output. Report manual platform/audio verification
+  separately; see [Offline speech](README.md#offline-speech).

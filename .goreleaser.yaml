@@ -1,8 +1,7 @@
 # GoReleaser configuration for stupidict.
 #
-# Native audio playback (malgo/miniaudio) requires CGO, so every target needs a
-# C toolchain. Releases run on a macOS host: Apple Clang builds the Darwin
-# targets natively, and Zig cross-compiles the C code for Linux and Windows.
+# The application is pure Go (CGO_ENABLED=0), including native audio playback,
+# so every target is cross-compiled from a single host without a C toolchain.
 # See .github/workflows/release.yml.
 version: 2
 
@@ -13,63 +12,17 @@ before:
     - go mod download
 
 builds:
-  - id: darwin
+  - id: stupidict
     main: ./cmd/stupidict
     binary: stupidict
-    goos: [darwin]
+    goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
     env:
-      - CGO_ENABLED=1
+      - CGO_ENABLED=0
     flags: [-trimpath]
-    ldflags: &ldflags
+    ldflags:
       - -s -w -X 'main.version=v{{ .Version }}' -X 'main.commit={{ .ShortCommit }}' -X 'main.buildDate={{ .Date }}'
     mod_timestamp: "{{ .CommitTimestamp }}"
-
-  - id: linux
-    main: ./cmd/stupidict
-    binary: stupidict
-    goos: [linux]
-    goarch: [amd64, arm64]
-    env:
-      - CGO_ENABLED=1
-    flags: [-trimpath]
-    ldflags: *ldflags
-    mod_timestamp: "{{ .CommitTimestamp }}"
-    # Target an old glibc so binaries run on most distributions. Audio
-    # libraries (ALSA/PulseAudio) are loaded at runtime by miniaudio.
-    overrides:
-      - goos: linux
-        goarch: amd64
-        env:
-          - CC=zig cc -target x86_64-linux-gnu.2.17
-          - CXX=zig c++ -target x86_64-linux-gnu.2.17
-      - goos: linux
-        goarch: arm64
-        env:
-          - CC=zig cc -target aarch64-linux-gnu.2.17
-          - CXX=zig c++ -target aarch64-linux-gnu.2.17
-
-  - id: windows
-    main: ./cmd/stupidict
-    binary: stupidict
-    goos: [windows]
-    goarch: [amd64, arm64]
-    env:
-      - CGO_ENABLED=1
-    flags: [-trimpath]
-    ldflags: *ldflags
-    mod_timestamp: "{{ .CommitTimestamp }}"
-    overrides:
-      - goos: windows
-        goarch: amd64
-        env:
-          - CC=zig cc -target x86_64-windows-gnu
-          - CXX=zig c++ -target x86_64-windows-gnu
-      - goos: windows
-        goarch: arm64
-        env:
-          - CC=zig cc -target aarch64-windows-gnu
-          - CXX=zig c++ -target aarch64-windows-gnu
 
 archives:
   - id: default

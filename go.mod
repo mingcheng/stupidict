@@ -3,19 +3,21 @@ module github.com/mingcheng/stupidict
 go 1.27.2
 
 require (
+	github.com/cavaliergopher/grab/v3 v3.0.1
+	github.com/ebitengine/oto/v3 v3.5.1
 	github.com/gdamore/tcell/v2 v2.8.1
-	github.com/gen2brain/malgo v0.11.24
 	github.com/gofrs/flock v0.12.1
 	github.com/hajimehoshi/go-mp3 v0.3.4
-	github.com/mattn/go-ieproxy v0.0.12
 	github.com/rivo/tview v0.42.0
 	modernc.org/sqlite v1.39.1
 )
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/ebitengine/purego v0.11.1 // indirect
 	github.com/gdamore/encoding v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/jfreymuth/pulse v0.1.3 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
@@ -23,8 +25,7 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
-	golang.org/x/net v0.55.0 // indirect
-	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/term v0.43.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 	modernc.org/libc v1.66.10 // indirect

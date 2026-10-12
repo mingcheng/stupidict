@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := build
 
 GO ?= go
-CGO_ENABLED = 1
+CGO_ENABLED = 0
 export CGO_ENABLED
 BINARY ?= bin/stupidict
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || printf dev)

@@ -237,7 +237,7 @@ func (ui *UI) about() {
 		{ui.tr("Dictionary", "词典文件"), ui.config.Dictionary},
 		{ui.tr("Audio", "语音文件"), audio},
 		{"", ""},
-		{"", ui.tr("Lookups and pronunciation use local data. Audio requires an installed audio pack and a build with native playback (CGO); there is no text-to-speech fallback.", "查询与发音使用本地数据。发音需要已安装的语音包及支持原生播放（CGO）的构建，不提供语音合成回退。")},
+		{"", ui.tr("Lookups and pronunciation use local data. Audio requires an installed audio pack and a working system audio output; there is no text-to-speech fallback.", "查询与发音使用本地数据。发音需要已安装的语音包及可用的系统音频输出，不提供语音合成回退。")},
 		{"", ui.tr("Data source: cholf5/stupid-dict, release data-3. Data updates reinstall this pinned release, not the application. Close this dialog, then press F1 for Help.", "数据来源：cholf5/stupid-dict 的 data-3 发布。数据更新会重装此固定版本，不会升级应用。关闭此对话框后按 F1 可打开帮助。")},
 	}...)
 	buttons, setRows := ui.informationDialog(ui.tr(" About ", " 关于 "), rows)

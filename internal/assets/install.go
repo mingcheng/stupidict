@@ -121,7 +121,7 @@ func (downloader *Downloader) install(ctx context.Context, asset, cache, target 
 		var source *os.File
 		source, err = os.Open(cache)
 		if err == nil {
-			_, err = copyContext(ctx, file, source, nil)
+			_, err = copyContext(ctx, file, source)
 			source.Close()
 		}
 	}
@@ -173,7 +173,7 @@ func extract(ctx context.Context, path string, target io.Writer) error {
 	}
 	defer source.Close()
 	// archive/zip verifies CRC when the entry is read through EOF.
-	_, err = copyContext(ctx, target, source, nil)
+	_, err = copyContext(ctx, target, source)
 	return err
 }
 

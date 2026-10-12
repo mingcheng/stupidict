@@ -840,7 +840,7 @@ func TestInformationDialogsResizeAndContent(t *testing.T) {
 						expected := []string{"Ctrl+K", "Shift+Tab", "F5", "-update-data", "-download", "-config"}
 						if key == tcell.KeyF4 {
 							expected = []string{harness.ui.configPath, "history.db", harness.ui.config.Dictionary,
-								harness.ui.tr("Not configured", "未配置"), "data-3", "CGO"}
+								harness.ui.tr("Not configured", "未配置"), "data-3", harness.ui.tr("system audio output", "系统音频输出")}
 						}
 						for _, value := range expected {
 							if !strings.Contains(content, strings.Join(strings.Fields(value), "")) {

@@ -27,18 +27,18 @@ Download an archive for your platform from the
 [GitHub Releases](https://github.com/mingcheng/stupidict/releases) page and verify
 it against `checksums.txt`. Builds are provided for:
 
-| OS      | Architectures    | Notes               |
-| ------- | ---------------- | ------------------- |
-| Linux   | `amd64`, `arm64` | glibc 2.17 or newer |
-| macOS   | `amd64`, `arm64` |                     |
-| Windows | `amd64`, `arm64` | `.zip` archive      |
+| OS      | Architectures    | Notes                              |
+| ------- | ---------------- | ---------------------------------- |
+| Linux   | `amd64`, `arm64` | glibc-based distributions (no musl) |
+| macOS   | `amd64`, `arm64` |                                    |
+| Windows | `amd64`, `arm64` | `.zip` archive                     |
 
 All release binaries include native audio playback.
 
 ### Build from source
 
-Requires **Go SDK development under 1.27.2 or newer**, Git, GNU Make, and a C compiler such as GCC or
-Clang (MinGW-w64 on Windows). Make enables CGO for native audio playback.
+Requires **Go 1.27.2 or newer**, Git, and GNU Make. No C compiler is needed: the
+build is pure Go (`CGO_ENABLED=0`), including native audio playback.
 
 ```sh
 git clone https://github.com/mingcheng/stupidict.git
@@ -92,11 +92,10 @@ git tag -a v1.0.0 -m "v1.0.0"
 git push origin v1.0.0
 ```
 
-Because native audio requires CGO, the workflow runs on macOS: Apple Clang builds the
-macOS targets and [Zig](https://ziglang.org) cross-compiles the C code for Linux and
-Windows. Manual runs and pull requests that change the release configuration produce
-a snapshot build as a workflow artifact instead of a release. To try it locally with
-GoReleaser v2 and Zig installed on macOS:
+Every push and pull request is vetted, tested, and built natively on Linux, macOS, and
+Windows runners. Because the code is pure Go, GoReleaser then cross-compiles all targets
+on one Linux runner with `CGO_ENABLED=0`; non-tag runs produce a snapshot build as a
+workflow artifact instead of a release. To try it locally with GoReleaser v2:
 
 ```sh
 goreleaser release --snapshot --clean
