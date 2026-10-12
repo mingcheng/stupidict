@@ -15,6 +15,7 @@ import (
 
 	dictionary "github.com/mingcheng/stupidict"
 	"github.com/gofrs/flock"
+	"github.com/mingcheng/stupidict/internal/sqliteuri"
 )
 
 // Install is invoked with a verified database next to its destination. The
@@ -194,8 +195,11 @@ func validate(ctx context.Context, asset, path string) error {
 		}
 		store.Close()
 	}
-	address := url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: "mode=ro"}
-	connection, err := sql.Open("sqlite", address.String())
+	address, err := sqliteuri.For(path, url.Values{"mode": {"ro"}})
+	if err != nil {
+		return err
+	}
+	connection, err := sql.Open("sqlite", address)
 	if err != nil {
 		return err
 	}

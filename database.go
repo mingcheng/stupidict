@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/mingcheng/stupidict/internal/sqliteuri"
 	_ "modernc.org/sqlite"
 )
 
@@ -23,8 +24,11 @@ func openReadOnly(ctx context.Context, path string) (*sql.DB, error) {
 	if !info.Mode().IsRegular() {
 		return nil, fmt.Errorf("not a regular database file: %s", path)
 	}
-	uri := url.URL{Scheme: "file", Path: filepath.ToSlash(absolute), RawQuery: "mode=ro"}
-	database, err := sql.Open("sqlite", uri.String())
+	uri, err := sqliteuri.For(absolute, url.Values{"mode": {"ro"}})
+	if err != nil {
+		return nil, err
+	}
+	database, err := sql.Open("sqlite", uri)
 	if err != nil {
 		return nil, err
 	}

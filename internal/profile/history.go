@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mingcheng/stupidict/internal/sqliteuri"
 	_ "modernc.org/sqlite"
 )
 
@@ -37,11 +38,11 @@ func OpenHistory(path string) (*History, error) {
 	if err := file.Close(); err != nil {
 		return nil, err
 	}
-	address := url.URL{Scheme: "file", Path: filepath.ToSlash(path)}
-	options := url.Values{}
-	options.Add("_pragma", "busy_timeout(5000)")
-	address.RawQuery = options.Encode()
-	database, err := sql.Open("sqlite", address.String())
+	address, err := sqliteuri.For(path, url.Values{"_pragma": {"busy_timeout(5000)"}})
+	if err != nil {
+		return nil, err
+	}
+	database, err := sql.Open("sqlite", address)
 	if err != nil {
 		return nil, err
 	}
